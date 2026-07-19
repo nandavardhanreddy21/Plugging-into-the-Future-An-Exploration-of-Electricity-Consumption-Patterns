@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Plugging into the Future — India Electricity Consumption 2019–2020</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0A1224;
+  --panel:#101B33;
+  --panel-2:#0D1730;
+  --line:#22314F;
+  --amber:#F2A93B;
+  --cyan:#4FD1E8;
+  --violet:#9A8CFF;
+  --text:#EAF0FB;
+  --text-dim:#8B9AC0;
+  --good:#4FD18E;
+  --bad:#F2685C;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(242,169,59,0.08), transparent 60%),
+    radial-gradient(1000px 700px at 100% 0%, rgba(79,209,232,0.07), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+.grid-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 75%);
+}
+header{
+  position:relative; z-index:1;
+  padding:36px 40px 22px;
+  border-block-end:1px solid var(--line);
+}
+.eyebrow{
+  font-family:'Consolas','SFMono-Regular',monospace;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--amber); font-size:12px; margin-block-end:10px;
+  display:flex; align-items:center; gap:10px;
+}
+.eyebrow::before{
+  content:''; inline-size:8px;
+block-size:8px;
+ border-radius:50%;
+  background:var(--amber); box-shadow:0 0 10px var(--amber);
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+h1{
+  margin:0; font-size:34px; font-weight:800; letter-spacing:-0.01em;
+  background:linear-gradient(90deg,#fff,var(--text-dim) 140%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.subtitle{color:var(--text-dim); margin-block-start: 8px; font-size:14.5px; max-inline-size: 640px; line-height:1.5;}
+
+.kpis{
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(5,1fr); gap:14px;
+  padding:22px 40px; border-block-end:1px solid var(--line);
+}
+.kpi{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px;
+}
+.kpi .label{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim);}
+.kpi .value{font-family:'Consolas',monospace; font-size:24px; font-weight:700; margin-block-start:6px;}
+.kpi .delta{font-size:12px; margin-block-start:4px;}
+.up{color:var(--good);} .down{color:var(--bad);}
+
+nav{
+  position:relative; z-index:1;
+  display:flex; gap:6px; padding:16px 40px 0; flex-wrap:wrap;
+  border-block-end:1px solid var(--line);
+}
+.tab{
+  background:transparent; border:1px solid var(--line); color:var(--text-dim);
+  padding:9px 16px; border-radius:8px 8px 0 0; cursor:pointer; font-size:13px;
+  font-weight:600; transition:all .15s;
+}
+.tab:hover{color:var(--text);}
+.tab.active{
+  color:var(--bg); background:var(--amber); border-color:var(--amber);
+}
+
+main{position:relative; z-index:1; padding:26px 40px 60px;}
+.filters{
+  display:flex; gap:12px; align-items:center; margin-block-end:20px; flex-wrap:wrap;
+}
+.filters label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin-inline-end:6px;}
+select{
+  background:var(--panel); color:var(--text); border:1px solid var(--line);
+  border-radius:6px; padding:7px 10px; font-size:13px;
+}
+.panel-view{display:none;}
+.panel-view.active{display:block;}
+.row{display:grid; gap:18px;}
+.row.two{grid-template-columns:1.3fr 1fr;}
+.row.three{grid-template-columns:repeat(3,1fr);}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px;
+}
+.card h3{margin:0 0 4px; font-size:15px;}
+.card .hint{color:var(--text-dim); font-size:12px; margin-block-end: 14px;}
+.chart-wrap{position:relative; block-size: 320px;}
+.chart-wrap.tall{block-size: 420px;}
+.chart-wrap.short{block-size: 230px;}
+footer{
+  position:relative; z-index:1; padding:22px 40px 40px; color:var(--text-dim); font-size:12px;
+  border-block-start:1px solid var(--line);
+}
+@media (max-width:900px){
+  .row.two, .row.three{grid-template-columns:1fr;}
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  header, main, nav, footer{padding-inline-start:18px; padding-inline-end:18px;}
+  h1{font-size:28px;}
+  .chart-wrap{block-size: 280px;}
+  .chart-wrap.tall{block-size: 360px;}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr 1fr; padding:16px 14px;}
+  header, main, nav, footer{padding-inline-start:14px; padding-inline-end:14px;}
+  header{padding-block-start:24px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px;}
+  nav{gap:4px; padding-block-start:12px;}
+  .tab{padding:8px 12px; font-size:12px;}
+  .card{padding:14px;}
+  .chart-wrap{block-size: 240px;}
+  .chart-wrap.tall{block-size: 300px;}
+  .filters{gap:8px;}
+  select{inline-size: 100%;}
+}
+@media (max-width:380px){
+  .kpis{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<header>
+  <div class="eyebrow">Live Dashboard · Tableau-equivalent build</div>
+  <h1>Plugging into the Future</h1>
+  <div class="subtitle">An exploration of electricity consumption patterns across 33 Indian states and 5 regions, Jan 2019 – Dec 2020 — including the impact of the COVID-19 lockdown on demand.</div>
+</header>
+
+<div class="kpis" id="kpiStrip"></div>
+
+<nav id="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="states">State Consumption</button>
+  <button class="tab" data-tab="regions">Regional Analysis</button>
+  <button class="tab" data-tab="time">Time Trends</button>
+  <button class="tab" data-tab="lockdown">Lockdown Impact</button>
+  <button class="tab" data-tab="metro">Metro Analysis</button>
+</nav>
+
+<main>
+
+  <!-- OVERVIEW -->
+  <section class="panel-view active" id="view-overview">
+    <div class="row two">
+      <div class="card">
+        <h3>Total Consumption by Region</h3>
+        <div class="hint">Sum of usage (Million Units), 2019–2020 combined</div>
+        <div class="chart-wrap"><canvas id="chartRegionTotal"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Usage by Year</h3>
+        <div class="hint">Overall demand trend, year over year</div>
+        <div class="chart-wrap"><canvas id="chartYearTotal"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Top 5 vs Bottom 5 States by Total Usage</h3>
+        <div class="hint">Highest and lowest consuming states, full period</div>
+        <div class="chart-wrap"><canvas id="chartTopBottom"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATES -->
+  <section class="panel-view" id="view-states">
+    <div class="filters">
+      <label>Year</label>
+      <select id="stateYearFilter">
+        <option value="2019">2019</option>
+        <option value="2020">2020</option>
+        <option value="total">2019 + 2020 (Total)</option>
+      </select>
+    </div>
+    <div class="card">
+      <h3 id="stateChartTitle">State Consumption</h3>
+      <div class="hint">All 33 states ranked by total usage (MU)</div>
+      <div class="chart-wrap tall"><canvas id="chartStateBar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- REGIONS -->
+  <section class="panel-view" id="view-regions">
+    <div class="row two">
+      <div class="card">
+        <h3>Total Region Consumption</h3>
+        <div class="hint">Share of national usage by region</div>
+        <div class="chart-wrap"><canvas id="chartRegionShare"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Region-wise Usage by Year</h3>
+        <div class="hint">2019 vs 2020, per region</div>
+        <div class="chart-wrap"><canvas id="chartRegionYear"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Region-wise State Usage</h3>
+        <div class="hint">Drill into a region to see its member states</div>
+        <div class="filters" style="margin-block-end:10px;">
+          <label>Region</label>
+          <select id="regionDrillFilter"></select>
+        </div>
+        <div class="chart-wrap"><canvas id="chartRegionDrill"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIME TRENDS -->
+  <section class="panel-view" id="view-time">
+    <div class="row">
+      <div class="card">
+        <h3>2019 vs 2020 Month-wise Consumption</h3>
+        <div class="hint">Monthly totals across both years (MU)</div>
+        <div class="chart-wrap tall"><canvas id="chartMonthWise"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Quarter-wise Usage</h3>
+        <div class="hint">Q1–Q4, split by year</div>
+        <div class="chart-wrap"><canvas id="chartQuarter"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOCKDOWN -->
+  <section class="panel-view" id="view-lockdown">
+    <div class="row two">
+      <div class="card">
+        <h3>Usage Before vs After Lockdown</h3>
+        <div class="hint">India's nationwide lockdown began 25 Mar 2020 — total usage split</div>
+        <div class="chart-wrap"><canvas id="chartLockdownTotal"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Average Daily Usage</h3>
+        <div class="hint">Before vs after, per state-day (MU)</div>
+        <div class="chart-wrap"><canvas id="chartLockdownAvg"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRO -->
+  <section class="panel-view" id="view-metro">
+    <div class="row two">
+      <div class="card">
+        <h3>Metro vs Non-Metro Total Usage</h3>
+        <div class="hint">Delhi, Maharashtra, Tamil Nadu, West Bengal, Karnataka, Telangana classed as Metro</div>
+        <div class="chart-wrap"><canvas id="chartMetroSplit"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Metro City / State Usage</h3>
+        <div class="hint">Total usage for each metro state</div>
+        <div class="chart-wrap"><canvas id="chartMetroStates"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Dataset: India state-wise daily electricity consumption, Jan 2019 – Dec 2020 · 33 states · 5 regions (NR, WR, SR, ER, NER) · Built as the interactive-dashboard equivalent of the project's Tableau deliverable.
+</footer>
+
+<script id="dataset" type="application/json">__DATA_JSON__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dataset').textContent);
+
+Chart.defaults.color = '#8B9AC0';
+Chart.defaults.borderColor = '#22314F';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const AMBER = '#F2A93B', CYAN='#4FD1E8', VIOLET='#9A8CFF', GOOD='#4FD18E', BAD='#F2685C';
+const PALETTE = [AMBER, CYAN, VIOLET, GOOD, BAD, '#5B8DEF', '#E8A6D0'];
+
+function fmt(n){ return Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+
+// ---------- KPI STRIP ----------
+(function(){
+  const y2019 = DATA.year_total.find(d=>d.Year===2019)?.Usage_MU || 0;
+  const y2020 = DATA.year_total.find(d=>d.Year===2020)?.Usage_MU || 0;
+  const topState = DATA.state_total[0];
+  const topRegion = DATA.region_total[0];
+  const lock = DATA.lockdown;
+  const before = lock.find(d=>d.period==='Before Lockdown')?.avg || 0;
+  const after = lock.find(d=>d.period==='After Lockdown')?.avg || 0;
+  const changePct = (((after-before)/before)*100).toFixed(1);
+
+  const kpis = [
+    {label:'Total Usage 2019', value: fmt(y2019)+' MU'},
+    {label:'Total Usage 2020', value: fmt(y2020)+' MU'},
+    {label:'Top State (All-time)', value: topState.state, sub: fmt(topState.usage)+' MU'},
+    {label:'Top Region', value: topRegion.region, sub: fmt(topRegion.usage)+' MU'},
+    {label:'Avg Daily Usage Shift', value: changePct+'%', delta: changePct<0?'down':'up', sub:'before → after lockdown'}
+  ];
+  const strip = document.getElementById('kpiStrip');
+  strip.innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+      ${k.sub?`<div class="delta ${k.delta||''}">${k.sub}</div>`:''}
+    </div>`).join('');
+})();
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel-view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- helper to make/replace charts ----------
+const charts = {};
+function makeChart(id, config){
+  const ctx = document.getElementById(id);
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, config);
+}
+
+// ---------- OVERVIEW ----------
+makeChart('chartRegionTotal', {
+  type:'doughnut',
+  data:{ labels: DATA.region_total.map(d=>d.region),
+    datasets:[{ data: DATA.region_total.map(d=>d.usage), backgroundColor: PALETTE, borderColor: '#101B33',  }]},
+  options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10, padding:14}}}, cutout:'62%' }
+});
+
+makeChart('chartYearTotal', {
+  type:'bar',
+  data:{ labels: DATA.year_total.map(d=>d.Year),
+    datasets:[{ label:'Total Usage (MU)', data: DATA.year_total.map(d=>d.Usage_MU), backgroundColor: CYAN, borderRadius:6, maxBarThickness:70 }]},
+  options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+});
+
+(function(){
+  const sorted = DATA.state_total;
+  const top5 = sorted.slice(0,5);
+  const bottom5 = sorted.slice(-5).reverse();
+  const labels = [...top5.map(d=>d.state), ...bottom5.map(d=>d.state)];
+  const values = [...top5.map(d=>d.usage), ...bottom5.map(d=>d.usage)];
+  const colors = [...top5.map(()=>AMBER), ...bottom5.map(()=>VIOLET)];
+  makeChart('chartTopBottom', {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Total Usage (MU)', data: values, backgroundColor: colors, borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}}} }
+  });
+})();
+
+// ---------- STATES ----------
+function renderStateChart(period){
+  const key = period==='total' ? 'state_total' : ('state_'+period);
+  const arr = DATA[key];
+  document.getElementById('stateChartTitle').textContent =
+    period==='total' ? 'State Consumption — 2019 + 2020 Total' : `State Consumption — ${period}`;
+  makeChart('chartStateBar', {
+    type:'bar',
+    data:{ labels: arr.map(d=>d.state), datasets:[{ label:'Usage (MU)', data: arr.map(d=>d.usage), backgroundColor: AMBER, borderRadius:5 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}, ticks:{autoSkip:false, font:{size:10}}}} }
+  });
+}
+document.getElementById('stateYearFilter').addEventListener('change', e=>renderStateChart(e.target.value));
+renderStateChart('2019');
+
+// ---------- REGIONS ----------
+makeChart('chartRegionShare', {
+  type:'pie',
+  data:{ labels: DATA.region_total.map(d=>d.region),
+    datasets:[{ data: DATA.region_total.map(d=>d.usage), backgroundColor: PALETTE, borderColor:'#101B33', borderWidth:3 }]},
+  options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:14}}} }
+});
+
+(function(){
+  const regions = DATA.regions;
+  const years = [2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: regions.map(r => (DATA.region_by_year.find(d=>d.Region===r && d.Year===yr)||{}).Usage_MU || 0),
+    backgroundColor: i===0?AMBER:CYAN, borderRadius:5
+  }));
+  makeChart('chartRegionYear', {
+    type:'bar',
+    data:{ labels: regions, datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+const regionDrillSel = document.getElementById('regionDrillFilter');
+regionDrillSel.innerHTML = DATA.regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+function renderRegionDrill(region){
+  const arr = DATA.state_geo.filter(d=>d.Region===region).sort((a,b)=>b.usage-a.usage);
+  makeChart('chartRegionDrill', {
+    type:'bar',
+    data:{ labels: arr.map(d=>d.State), datasets:[{ label:'Usage (MU)', data: arr.map(d=>d.usage), backgroundColor: VIOLET, borderRadius:6 }]},
+    options:{ plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+}
+regionDrillSel.addEventListener('change', e=>renderRegionDrill(e.target.value));
+renderRegionDrill(DATA.regions[0]);
+
+// ---------- TIME TRENDS ----------
+(function(){
+  const months = [...new Set(DATA.month_wise.map(d=>d.MonthName))];
+  const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sortedMonths = monthOrder.filter(m=>months.includes(m));
+  const years = [2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: sortedMonths.map(m => {
+      const rec = DATA.month_wise.find(d=>d.MonthName===m && d.Year===yr);
+      return rec ? rec.Usage_MU : null;
+    }),
+    borderColor: i===0?AMBER:CYAN, backgroundColor: i===0?AMBER:CYAN,
+    tension:0.35, spanGaps:true, pointRadius:3
+  }));
+  makeChart('chartMonthWise', {
+    type:'line',
+    data:{ labels: sortedMonths.map(m=>m.slice(0,3)), datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+(function(){
+  const quarters = ['Q1','Q2','Q3','Q4'];
+  const years=[2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: quarters.map(q=>{
+      const rec = DATA.quarter.find(d=>d.Quarter===q && d.Year===yr);
+      return rec ? rec.Usage_MU : 0;
+    }),
+    backgroundColor: i===0?AMBER:CYAN, borderRadius:5
+  }));
+  makeChart('chartQuarter', {
+    type:'bar',
+    data:{ labels: quarters, datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+// ---------- LOCKDOWN ----------
+makeChart('chartLockdownTotal', {
+  type:'doughnut',
+  data:{ labels: DATA.lockdown.map(d=>d.period),
+    datasets:[{ data: DATA.lockdown.map(d=>d.total), backgroundColor:[CYAN, BAD], borderColor:'#101B33', borderWidth:3 }]},
+  options:{ plugins:{legend:{position:'bottom'}}, cutout:'60%' }
+});
+makeChart('chartLockdownAvg', {
+  type:'bar',
+  data:{ labels: DATA.lockdown.map(d=>d.period),
+    datasets:[{ label:'Avg Daily Usage (MU)', data: DATA.lockdown.map(d=>d.avg), backgroundColor:[CYAN, BAD], borderRadius:6, maxBarThickness:90 }]},
+  options:{ plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+});
+
+// ---------- METRO ----------
+(function(){
+  const totals = {};
+  DATA.citytype.forEach(d=>{ totals[d.CityType] = (totals[d.CityType]||0) + d.Usage_MU; });
+  makeChart('chartMetroSplit', {
+    type:'pie',
+    data:{ labels: Object.keys(totals), datasets:[{ data: Object.values(totals), backgroundColor:[AMBER, VIOLET], borderColor:'#101B33', borderWidth:3 }]},
+    options:{ plugins:{legend:{position:'bottom'}} }
+  });
+})();
+(function(){
+  const metroStates = DATA.citytype.filter(d=>d.CityType==='Metro').sort((a,b)=>b.Usage_MU-a.Usage_MU);
+  makeChart('chartMetroStates', {
+    type:'bar',
+    data:{ labels: metroStates.map(d=>d.State), datasets:[{ label:'Usage (MU)', data: metroStates.map(d=>d.Usage_MU), backgroundColor: GOOD, borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}}} }
+  });
+})();
+</script>
+</body>
+</html>

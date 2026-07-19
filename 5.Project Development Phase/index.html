@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Plugging into the Future — India Electricity Consumption 2019–2020</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0A1224;
+  --panel:#101B33;
+  --panel-2:#0D1730;
+  --line:#22314F;
+  --amber:#F2A93B;
+  --cyan:#4FD1E8;
+  --violet:#9A8CFF;
+  --text:#EAF0FB;
+  --text-dim:#8B9AC0;
+  --good:#4FD18E;
+  --bad:#F2685C;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(242,169,59,0.08), transparent 60%),
+    radial-gradient(1000px 700px at 100% 0%, rgba(79,209,232,0.07), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+.grid-overlay{
+  position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 75%);
+}
+header{
+  position:relative; z-index:1;
+  padding:36px 40px 22px;
+  border-block-end:1px solid var(--line);
+}
+.eyebrow{
+  font-family:'Consolas','SFMono-Regular',monospace;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--amber); font-size:12px; margin-block-end:10px;
+  display:flex; align-items:center; gap:10px;
+}
+.eyebrow::before{
+  content:''; width:8px; height:8px; border-radius:50%;
+  background:var(--amber); box-shadow:0 0 10px var(--amber);
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+h1{
+  margin:0; font-size:34px; font-weight:800; letter-spacing:-0.01em;
+  background:linear-gradient(90deg,#fff,var(--text-dim) 140%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.subtitle{color:var(--text-dim); margin-top:8px; font-size:14.5px; max-width:640px; line-height:1.5;}
+
+.kpis{
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(5,1fr); gap:14px;
+  padding:22px 40px; border-block-end:1px solid var(--line);
+}
+.kpi{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px;
+}
+.kpi .label{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim);}
+.kpi .value{font-family:'Consolas',monospace; font-size:24px; font-weight:700; margin-block-start:6px;}
+.kpi .delta{font-size:12px; margin-block-start:4px;}
+.up{color:var(--good);} .down{color:var(--bad);}
+
+nav{
+  position:relative; z-index:1;
+  display:flex; gap:6px; padding:16px 40px 0; flex-wrap:wrap;
+  border-block-end:1px solid var(--line);
+}
+.tab{
+  background:transparent; border:1px solid var(--line); color:var(--text-dim);
+  padding:9px 16px; border-radius:8px 8px 0 0; cursor:pointer; font-size:13px;
+  font-weight:600; transition:all .15s;
+}
+.tab:hover{color:var(--text);}
+.tab.active{
+  color:var(--bg); background:var(--amber); border-color:var(--amber);
+}
+
+main{position:relative; z-index:1; padding:26px 40px 60px;}
+.filters{
+  display:flex; gap:12px; align-items:center; margin-block-end:20px; flex-wrap:wrap;
+}
+.filters label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin-inline-end:6px;}
+select{
+  background:var(--panel); color:var(--text); border:1px solid var(--line);
+  border-radius:6px; padding:7px 10px; font-size:13px;
+}
+.panel-view{display:none;}
+.panel-view.active{display:block;}
+.row{display:grid; gap:18px;}
+.row.two{grid-template-columns:1.3fr 1fr;}
+.row.three{grid-template-columns:repeat(3,1fr);}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px;
+}
+.card h3{margin:0 0 4px; font-size:15px;}
+.card .hint{color:var(--text-dim); font-size:12px; margin-bottom:14px;}
+.chart-wrap{position:relative; height:320px;}
+.chart-wrap.tall{height:420px;}
+.chart-wrap.short{height:230px;}
+footer{
+  position:relative; z-index:1; padding:22px 40px 40px; color:var(--text-dim); font-size:12px;
+  border-block-start:1px solid var(--line);
+}
+@media (max-width:900px){
+  .row.two, .row.three{grid-template-columns:1fr;}
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  header, main, nav, footer{padding-inline-start:18px; padding-inline-end:18px;}
+  h1{font-size:28px;}
+  .chart-wrap{height:280px;}
+  .chart-wrap.tall{height:360px;}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr 1fr; padding:16px 14px;}
+  header, main, nav, footer{padding-inline-start:14px; padding-inline-end:14px;}
+  header{padding-block-start:24px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px;}
+  nav{gap:4px; padding-block-start:12px;}
+  .tab{padding:8px 12px; font-size:12px;}
+  .card{padding:14px;}
+  .chart-wrap{height:240px;}
+  .chart-wrap.tall{height:300px;}
+  .filters{gap:8px;}
+  select{width:100%;}
+}
+@media (max-width:380px){
+  .kpis{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<header>
+  <div class="eyebrow">Live Dashboard · Tableau-equivalent build</div>
+  <h1>Plugging into the Future</h1>
+  <div class="subtitle">An exploration of electricity consumption patterns across 33 Indian states and 5 regions, Jan 2019 – Dec 2020 — including the impact of the COVID-19 lockdown on demand.</div>
+</header>
+
+<div class="kpis" id="kpiStrip"></div>
+
+<nav id="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="states">State Consumption</button>
+  <button class="tab" data-tab="regions">Regional Analysis</button>
+  <button class="tab" data-tab="time">Time Trends</button>
+  <button class="tab" data-tab="lockdown">Lockdown Impact</button>
+  <button class="tab" data-tab="metro">Metro Analysis</button>
+</nav>
+
+<main>
+
+  <!-- OVERVIEW -->
+  <section class="panel-view active" id="view-overview">
+    <div class="row two">
+      <div class="card">
+        <h3>Total Consumption by Region</h3>
+        <div class="hint">Sum of usage (Million Units), 2019–2020 combined</div>
+        <div class="chart-wrap"><canvas id="chartRegionTotal"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Usage by Year</h3>
+        <div class="hint">Overall demand trend, year over year</div>
+        <div class="chart-wrap"><canvas id="chartYearTotal"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Top 5 vs Bottom 5 States by Total Usage</h3>
+        <div class="hint">Highest and lowest consuming states, full period</div>
+        <div class="chart-wrap"><canvas id="chartTopBottom"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATES -->
+  <section class="panel-view" id="view-states">
+    <div class="filters">
+      <label>Year</label>
+      <select id="stateYearFilter">
+        <option value="2019">2019</option>
+        <option value="2020">2020</option>
+        <option value="total">2019 + 2020 (Total)</option>
+      </select>
+    </div>
+    <div class="card">
+      <h3 id="stateChartTitle">State Consumption</h3>
+      <div class="hint">All 33 states ranked by total usage (MU)</div>
+      <div class="chart-wrap tall"><canvas id="chartStateBar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- REGIONS -->
+  <section class="panel-view" id="view-regions">
+    <div class="row two">
+      <div class="card">
+        <h3>Total Region Consumption</h3>
+        <div class="hint">Share of national usage by region</div>
+        <div class="chart-wrap"><canvas id="chartRegionShare"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Region-wise Usage by Year</h3>
+        <div class="hint">2019 vs 2020, per region</div>
+        <div class="chart-wrap"><canvas id="chartRegionYear"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Region-wise State Usage</h3>
+        <div class="hint">Drill into a region to see its member states</div>
+        <div class="filters" style="margin-block-end:10px;">
+          <label>Region</label>
+          <select id="regionDrillFilter"></select>
+        </div>
+        <div class="chart-wrap"><canvas id="chartRegionDrill"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIME TRENDS -->
+  <section class="panel-view" id="view-time">
+    <div class="row">
+      <div class="card">
+        <h3>2019 vs 2020 Month-wise Consumption</h3>
+        <div class="hint">Monthly totals across both years (MU)</div>
+        <div class="chart-wrap tall"><canvas id="chartMonthWise"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-block-start:18px;">
+      <div class="card">
+        <h3>Quarter-wise Usage</h3>
+        <div class="hint">Q1–Q4, split by year</div>
+        <div class="chart-wrap"><canvas id="chartQuarter"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOCKDOWN -->
+  <section class="panel-view" id="view-lockdown">
+    <div class="row two">
+      <div class="card">
+        <h3>Usage Before vs After Lockdown</h3>
+        <div class="hint">India's nationwide lockdown began 25 Mar 2020 — total usage split</div>
+        <div class="chart-wrap"><canvas id="chartLockdownTotal"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Average Daily Usage</h3>
+        <div class="hint">Before vs after, per state-day (MU)</div>
+        <div class="chart-wrap"><canvas id="chartLockdownAvg"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRO -->
+  <section class="panel-view" id="view-metro">
+    <div class="row two">
+      <div class="card">
+        <h3>Metro vs Non-Metro Total Usage</h3>
+        <div class="hint">Delhi, Maharashtra, Tamil Nadu, West Bengal, Karnataka, Telangana classed as Metro</div>
+        <div class="chart-wrap"><canvas id="chartMetroSplit"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Metro City / State Usage</h3>
+        <div class="hint">Total usage for each metro state</div>
+        <div class="chart-wrap"><canvas id="chartMetroStates"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Dataset: India state-wise daily electricity consumption, Jan 2019 – Dec 2020 · 33 states · 5 regions (NR, WR, SR, ER, NER) · Built as the interactive-dashboard equivalent of the project's Tableau deliverable.
+</footer>
+
+<script id="dataset" type="application/json">{"state_2019": [{"state": "Maharashtra", "usage": 154916.7}, {"state": "Gujarat", "usage": 115357.4}, {"state": "UP", "usage": 112689.9}, {"state": "Tamil Nadu", "usage": 106720.2}, {"state": "Rajasthan", "usage": 78138.8}, {"state": "MP", "usage": 74974.6}, {"state": "Karnataka", "usage": 73076.9}, {"state": "Telangana", "usage": 67449.6}, {"state": "Andhra Pradesh", "usage": 63097.0}, {"state": "West Bengal", "usage": 49868.7}, {"state": "Punjab", "usage": 49635.7}, {"state": "Haryana", "usage": 48995.0}, {"state": "Chhattisgarh", "usage": 30179.9}, {"state": "Bihar", "usage": 30007.9}, {"state": "Delhi", "usage": 29458.3}, {"state": "Odisha", "usage": 28966.6}, {"state": "Kerala", "usage": 25798.2}, {"state": "J&K", "usage": 15915.3}, {"state": "Uttarakhand", "usage": 12898.6}, {"state": "HP", "usage": 9490.8}, {"state": "Assam", "usage": 8979.4}, {"state": "Jharkhand", "usage": 8605.5}, {"state": "DNH", "usage": 5845.4}, {"state": "Goa", "usage": 4006.5}, {"state": "Pondy", "usage": 2653.3}, {"state": "Meghalaya", "usage": 2018.1}, {"state": "Tripura", "usage": 1482.5}, {"state": "Chandigarh", "usage": 1472.4}, {"state": "Manipur", "usage": 894.6}, {"state": "Nagaland", "usage": 776.8}, {"state": "Arunachal Pradesh", "usage": 754.0}, {"state": "Mizoram", "usage": 614.3}, {"state": "Sikkim", "usage": 466.4}], "state_2020": [{"state": "Maharashtra", "usage": 62163.1}, {"state": "Gujarat", "usage": 47131.5}, {"state": "UP", "usage": 45270.4}, {"state": "Tamil Nadu", "usage": 44551.3}, {"state": "Rajasthan", "usage": 31738.2}, {"state": "MP", "usage": 29791.8}, {"state": "Karnataka", "usage": 29588.8}, {"state": "Telangana", "usage": 26615.7}, {"state": "Andhra Pradesh", "usage": 25507.4}, {"state": "Punjab", "usage": 21360.5}, {"state": "Haryana", "usage": 20586.8}, {"state": "West Bengal", "usage": 19901.5}, {"state": "Delhi", "usage": 12482.2}, {"state": "Chhattisgarh", "usage": 12010.3}, {"state": "Bihar", "usage": 11821.3}, {"state": "Odisha", "usage": 11507.1}, {"state": "Kerala", "usage": 10514.6}, {"state": "J&K", "usage": 6349.5}, {"state": "Uttarakhand", "usage": 5288.4}, {"state": "HP", "usage": 3873.0}, {"state": "Assam", "usage": 3575.5}, {"state": "Jharkhand", "usage": 3387.3}, {"state": "DNH", "usage": 2419.2}, {"state": "Goa", "usage": 1573.4}, {"state": "Pondy", "usage": 1105.6}, {"state": "Meghalaya", "usage": 820.7}, {"state": "Chandigarh", "usage": 610.8}, {"state": "Tripura", "usage": 572.5}, {"state": "Manipur", "usage": 360.2}, {"state": "Nagaland", "usage": 310.9}, {"state": "Arunachal Pradesh", "usage": 306.9}, {"state": "Mizoram", "usage": 244.0}, {"state": "Sikkim", "usage": 182.2}], "state_total": [{"state": "Maharashtra", "usage": 217079.8}, {"state": "Gujarat", "usage": 162488.9}, {"state": "UP", "usage": 157960.3}, {"state": "Tamil Nadu", "usage": 151271.5}, {"state": "Rajasthan", "usage": 109877.0}, {"state": "MP", "usage": 104766.4}, {"state": "Karnataka", "usage": 102665.7}, {"state": "Telangana", "usage": 94065.3}, {"state": "Andhra Pradesh", "usage": 88604.4}, {"state": "Punjab", "usage": 70996.2}, {"state": "West Bengal", "usage": 69770.2}, {"state": "Haryana", "usage": 69581.8}, {"state": "Chhattisgarh", "usage": 42190.2}, {"state": "Delhi", "usage": 41940.5}, {"state": "Bihar", "usage": 41829.2}, {"state": "Odisha", "usage": 40473.7}, {"state": "Kerala", "usage": 36312.8}, {"state": "J&K", "usage": 22264.8}, {"state": "Uttarakhand", "usage": 18187.0}, {"state": "HP", "usage": 13363.8}, {"state": "Assam", "usage": 12554.9}, {"state": "Jharkhand", "usage": 11992.8}, {"state": "DNH", "usage": 8264.6}, {"state": "Goa", "usage": 5579.9}, {"state": "Pondy", "usage": 3758.9}, {"state": "Meghalaya", "usage": 2838.8}, {"state": "Chandigarh", "usage": 2083.2}, {"state": "Tripura", "usage": 2055.0}, {"state": "Manipur", "usage": 1254.8}, {"state": "Nagaland", "usage": 1087.7}, {"state": "Arunachal Pradesh", "usage": 1060.9}, {"state": "Mizoram", "usage": 858.3}, {"state": "Sikkim", "usage": 648.6}], "region_total": [{"region": "WR", "usage": 540369.8}, {"region": "NR", "usage": 506254.6}, {"region": "SR", "usage": 476678.6}, {"region": "ER", "usage": 164714.5}, {"region": "NER", "usage": 21710.4}], "region_by_year": [{"Region": "ER", "Year": 2019, "Usage_MU": 117915.1}, {"Region": "ER", "Year": 2020, "Usage_MU": 46799.4}, {"Region": "NER", "Year": 2019, "Usage_MU": 15519.7}, {"Region": "NER", "Year": 2020, "Usage_MU": 6190.7}, {"Region": "NR", "Year": 2019, "Usage_MU": 358694.8}, {"Region": "NR", "Year": 2020, "Usage_MU": 147559.8}, {"Region": "SR", "Year": 2019, "Usage_MU": 338795.2}, {"Region": "SR", "Year": 2020, "Usage_MU": 137883.4}, {"Region": "WR", "Year": 2019, "Usage_MU": 385280.5}, {"Region": "WR", "Year": 2020, "Usage_MU": 155089.3}], "month_wise": [{"Month": 1, "MonthName": "Jan", "Year": 2019, "Usage_MU": 101305.6}, {"Month": 1, "MonthName": "Jan", "Year": 2020, "Usage_MU": 85319.2}, {"Month": 2, "MonthName": "Feb", "Year": 2019, "Usage_MU": 87276.4}, {"Month": 2, "MonthName": "Feb", "Year": 2020, "Usage_MU": 76385.4}, {"Month": 3, "MonthName": "Mar", "Year": 2019, "Usage_MU": 99833.6}, {"Month": 3, "MonthName": "Mar", "Year": 2020, "Usage_MU": 77012.1}, {"Month": 4, "MonthName": "Apr", "Year": 2019, "Usage_MU": 103150.8}, {"Month": 4, "MonthName": "Apr", "Year": 2020, "Usage_MU": 78242.3}, {"Month": 5, "MonthName": "May", "Year": 2019, "Usage_MU": 101728.0}, {"Month": 5, "MonthName": "May", "Year": 2020, "Usage_MU": 53559.3}, {"Month": 6, "MonthName": "Jun", "Year": 2019, "Usage_MU": 96775.6}, {"Month": 6, "MonthName": "Jun", "Year": 2020, "Usage_MU": 15661.2}, {"Month": 7, "MonthName": "Jul", "Year": 2019, "Usage_MU": 118600.3}, {"Month": 7, "MonthName": "Jul", "Year": 2020, "Usage_MU": 17130.7}, {"Month": 8, "MonthName": "Aug", "Year": 2019, "Usage_MU": 105273.9}, {"Month": 8, "MonthName": "Aug", "Year": 2020, "Usage_MU": 18134.4}, {"Month": 9, "MonthName": "Sep", "Year": 2019, "Usage_MU": 102346.7}, {"Month": 9, "MonthName": "Sep", "Year": 2020, "Usage_MU": 17178.4}, {"Month": 10, "MonthName": "Oct", "Year": 2019, "Usage_MU": 102442.6}, {"Month": 10, "MonthName": "Oct", "Year": 2020, "Usage_MU": 18536.6}, {"Month": 11, "MonthName": "Nov", "Year": 2019, "Usage_MU": 93288.9}, {"Month": 11, "MonthName": "Nov", "Year": 2020, "Usage_MU": 18082.0}, {"Month": 12, "MonthName": "Dec", "Year": 2019, "Usage_MU": 104182.9}, {"Month": 12, "MonthName": "Dec", "Year": 2020, "Usage_MU": 18281.0}], "lockdown": [{"period": "After Lockdown", "total": 274819.9, "avg": 102.81}, {"period": "Before Lockdown", "total": 1434908.0, "avg": 103.04}], "quarter": [{"Quarter": "Q1", "Year": 2019, "Usage_MU": 288415.6}, {"Quarter": "Q2", "Year": 2019, "Usage_MU": 301654.4}, {"Quarter": "Q3", "Year": 2019, "Usage_MU": 326220.9}, {"Quarter": "Q4", "Year": 2019, "Usage_MU": 299914.4}, {"Quarter": "Q1", "Year": 2020, "Usage_MU": 238716.7}, {"Quarter": "Q2", "Year": 2020, "Usage_MU": 147462.8}, {"Quarter": "Q3", "Year": 2020, "Usage_MU": 52443.5}, {"Quarter": "Q4", "Year": 2020, "Usage_MU": 54899.6}], "citytype": [{"CityType": "Metro", "State": "Maharashtra", "Usage_MU": 217079.8}, {"CityType": "Non-Metro", "State": "Gujarat", "Usage_MU": 162488.9}, {"CityType": "Non-Metro", "State": "UP", "Usage_MU": 157960.3}, {"CityType": "Metro", "State": "Tamil Nadu", "Usage_MU": 151271.5}, {"CityType": "Non-Metro", "State": "Rajasthan", "Usage_MU": 109877.0}, {"CityType": "Non-Metro", "State": "MP", "Usage_MU": 104766.4}, {"CityType": "Metro", "State": "Karnataka", "Usage_MU": 102665.7}, {"CityType": "Metro", "State": "Telangana", "Usage_MU": 94065.3}, {"CityType": "Non-Metro", "State": "Andhra Pradesh", "Usage_MU": 88604.4}, {"CityType": "Non-Metro", "State": "Punjab", "Usage_MU": 70996.2}, {"CityType": "Metro", "State": "West Bengal", "Usage_MU": 69770.2}, {"CityType": "Non-Metro", "State": "Haryana", "Usage_MU": 69581.8}, {"CityType": "Non-Metro", "State": "Chhattisgarh", "Usage_MU": 42190.2}, {"CityType": "Metro", "State": "Delhi", "Usage_MU": 41940.5}, {"CityType": "Non-Metro", "State": "Bihar", "Usage_MU": 41829.2}, {"CityType": "Non-Metro", "State": "Odisha", "Usage_MU": 40473.7}, {"CityType": "Non-Metro", "State": "Kerala", "Usage_MU": 36312.8}, {"CityType": "Non-Metro", "State": "J&K", "Usage_MU": 22264.8}, {"CityType": "Non-Metro", "State": "Uttarakhand", "Usage_MU": 18187.0}, {"CityType": "Non-Metro", "State": "HP", "Usage_MU": 13363.8}, {"CityType": "Non-Metro", "State": "Assam", "Usage_MU": 12554.9}, {"CityType": "Non-Metro", "State": "Jharkhand", "Usage_MU": 11992.8}, {"CityType": "Non-Metro", "State": "DNH", "Usage_MU": 8264.6}, {"CityType": "Non-Metro", "State": "Goa", "Usage_MU": 5579.9}, {"CityType": "Non-Metro", "State": "Pondy", "Usage_MU": 3758.9}, {"CityType": "Non-Metro", "State": "Meghalaya", "Usage_MU": 2838.8}, {"CityType": "Non-Metro", "State": "Chandigarh", "Usage_MU": 2083.2}, {"CityType": "Non-Metro", "State": "Tripura", "Usage_MU": 2055.0}, {"CityType": "Non-Metro", "State": "Manipur", "Usage_MU": 1254.8}, {"CityType": "Non-Metro", "State": "Nagaland", "Usage_MU": 1087.7}, {"CityType": "Non-Metro", "State": "Arunachal Pradesh", "Usage_MU": 1060.9}, {"CityType": "Non-Metro", "State": "Mizoram", "Usage_MU": 858.3}, {"CityType": "Non-Metro", "State": "Sikkim", "Usage_MU": 648.6}], "year_total": [{"Year": 2019, "Usage_MU": 1216205.3}, {"Year": 2020, "Usage_MU": 493522.6}], "state_geo": [{"State": "Andhra Pradesh", "Region": "SR", "latitude": 14.7504, "longitude": 78.57, "usage": 88604.4}, {"State": "Arunachal Pradesh", "Region": "NER", "latitude": 27.1004, "longitude": 93.6166, "usage": 1060.9}, {"State": "Assam", "Region": "NER", "latitude": 26.75, "longitude": 94.2167, "usage": 12554.9}, {"State": "Bihar", "Region": "ER", "latitude": 25.7854, "longitude": 87.48, "usage": 41829.2}, {"State": "Chandigarh", "Region": "NR", "latitude": 30.72, "longitude": 76.78, "usage": 2083.2}, {"State": "Chhattisgarh", "Region": "WR", "latitude": 22.0904, "longitude": 82.16, "usage": 42190.2}, {"State": "DNH", "Region": "WR", "latitude": 20.2666, "longitude": 73.0166, "usage": 8264.6}, {"State": "Delhi", "Region": "NR", "latitude": 28.67, "longitude": 77.23, "usage": 41940.5}, {"State": "Goa", "Region": "WR", "latitude": 15.492, "longitude": 73.818, "usage": 5579.9}, {"State": "Gujarat", "Region": "WR", "latitude": 22.2587, "longitude": 71.1924, "usage": 162488.9}, {"State": "HP", "Region": "NR", "latitude": 31.1, "longitude": 77.1666, "usage": 13363.8}, {"State": "Haryana", "Region": "NR", "latitude": 28.45, "longitude": 77.02, "usage": 69581.8}, {"State": "J&K", "Region": "NR", "latitude": 33.45, "longitude": 76.24, "usage": 22264.8}, {"State": "Jharkhand", "Region": "ER", "latitude": 23.8004, "longitude": 86.42, "usage": 11992.8}, {"State": "Karnataka", "Region": "SR", "latitude": 12.5704, "longitude": 76.92, "usage": 102665.7}, {"State": "Kerala", "Region": "SR", "latitude": 8.9004, "longitude": 76.57, "usage": 36312.8}, {"State": "MP", "Region": "WR", "latitude": 21.3004, "longitude": 76.13, "usage": 104766.4}, {"State": "Maharashtra", "Region": "WR", "latitude": 19.2502, "longitude": 73.1602, "usage": 217079.8}, {"State": "Manipur", "Region": "NER", "latitude": 24.8, "longitude": 93.95, "usage": 1254.8}, {"State": "Meghalaya", "Region": "NER", "latitude": 25.5705, "longitude": 91.88, "usage": 2838.8}, {"State": "Mizoram", "Region": "NER", "latitude": 23.7104, "longitude": 92.72, "usage": 858.3}, {"State": "Nagaland", "Region": "NER", "latitude": 25.667, "longitude": 94.1166, "usage": 1087.7}, {"State": "Odisha", "Region": "ER", "latitude": 19.8204, "longitude": 85.9, "usage": 40473.7}, {"State": "Pondy", "Region": "SR", "latitude": 11.935, "longitude": 79.83, "usage": 3758.9}, {"State": "Punjab", "Region": "NR", "latitude": 31.52, "longitude": 75.98, "usage": 70996.2}, {"State": "Rajasthan", "Region": "NR", "latitude": 26.45, "longitude": 74.64, "usage": 109877.0}, {"State": "Sikkim", "Region": "ER", "latitude": 27.3333, "longitude": 88.6166, "usage": 648.6}, {"State": "Tamil Nadu", "Region": "SR", "latitude": 12.9204, "longitude": 79.15, "usage": 151271.5}, {"State": "Telangana", "Region": "SR", "latitude": 18.1124, "longitude": 79.0193, "usage": 94065.3}, {"State": "Tripura", "Region": "NER", "latitude": 23.8354, "longitude": 91.28, "usage": 2055.0}, {"State": "UP", "Region": "NR", "latitude": 27.6, "longitude": 78.05, "usage": 157960.3}, {"State": "Uttarakhand", "Region": "NR", "latitude": 30.3204, "longitude": 78.05, "usage": 18187.0}, {"State": "West Bengal", "Region": "ER", "latitude": 22.5804, "longitude": 88.3299, "usage": 69770.2}], "states": ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh", "Chhattisgarh", "DNH", "Delhi", "Goa", "Gujarat", "HP", "Haryana", "J&K", "Jharkhand", "Karnataka", "Kerala", "MP", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Pondy", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "UP", "Uttarakhand", "West Bengal"], "regions": ["ER", "NER", "NR", "SR", "WR"]}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dataset').textContent);
+
+Chart.defaults.color = '#8B9AC0';
+Chart.defaults.borderColor = '#22314F';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const AMBER = '#F2A93B', CYAN='#4FD1E8', VIOLET='#9A8CFF', GOOD='#4FD18E', BAD='#F2685C';
+const PALETTE = [AMBER, CYAN, VIOLET, GOOD, BAD, '#5B8DEF', '#E8A6D0'];
+
+function fmt(n){ return Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+
+// ---------- KPI STRIP ----------
+(function(){
+  const y2019 = DATA.year_total.find(d=>d.Year===2019)?.Usage_MU || 0;
+  const y2020 = DATA.year_total.find(d=>d.Year===2020)?.Usage_MU || 0;
+  const topState = DATA.state_total[0];
+  const topRegion = DATA.region_total[0];
+  const lock = DATA.lockdown;
+  const before = lock.find(d=>d.period==='Before Lockdown')?.avg || 0;
+  const after = lock.find(d=>d.period==='After Lockdown')?.avg || 0;
+  const changePct = (((after-before)/before)*100).toFixed(1);
+
+  const kpis = [
+    {label:'Total Usage 2019', value: fmt(y2019)+' MU'},
+    {label:'Total Usage 2020', value: fmt(y2020)+' MU'},
+    {label:'Top State (All-time)', value: topState.state, sub: fmt(topState.usage)+' MU'},
+    {label:'Top Region', value: topRegion.region, sub: fmt(topRegion.usage)+' MU'},
+    {label:'Avg Daily Usage Shift', value: changePct+'%', delta: changePct<0?'down':'up', sub:'before → after lockdown'}
+  ];
+  const strip = document.getElementById('kpiStrip');
+  strip.innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+      ${k.sub?`<div class="delta ${k.delta||''}">${k.sub}</div>`:''}
+    </div>`).join('');
+})();
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel-view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- helper to make/replace charts ----------
+const charts = {};
+function makeChart(id, config){
+  const ctx = document.getElementById(id);
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, config);
+}
+
+// ---------- OVERVIEW ----------
+makeChart('chartRegionTotal', {
+  type:'doughnut',
+  data:{ labels: DATA.region_total.map(d=>d.region),
+    datasets:[{ data: DATA.region_total.map(d=>d.usage), backgroundColor: PALETTE, borderColor: '#101B33', borderWidth:3 }]},
+  options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10, padding:14}}}, cutout:'62%' }
+});
+
+makeChart('chartYearTotal', {
+  type:'bar',
+  data:{ labels: DATA.year_total.map(d=>d.Year),
+    datasets:[{ label:'Total Usage (MU)', data: DATA.year_total.map(d=>d.Usage_MU), backgroundColor: CYAN, borderRadius:6, maxBarThickness:70 }]},
+  options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+});
+
+(function(){
+  const sorted = DATA.state_total;
+  const top5 = sorted.slice(0,5);
+  const bottom5 = sorted.slice(-5).reverse();
+  const labels = [...top5.map(d=>d.state), ...bottom5.map(d=>d.state)];
+  const values = [...top5.map(d=>d.usage), ...bottom5.map(d=>d.usage)];
+  const colors = [...top5.map(()=>AMBER), ...bottom5.map(()=>VIOLET)];
+  makeChart('chartTopBottom', {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Total Usage (MU)', data: values, backgroundColor: colors, borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}}} }
+  });
+})();
+
+// ---------- STATES ----------
+function renderStateChart(period){
+  const key = period==='total' ? 'state_total' : ('state_'+period);
+  const arr = DATA[key];
+  document.getElementById('stateChartTitle').textContent =
+    period==='total' ? 'State Consumption — 2019 + 2020 Total' : `State Consumption — ${period}`;
+  makeChart('chartStateBar', {
+    type:'bar',
+    data:{ labels: arr.map(d=>d.state), datasets:[{ label:'Usage (MU)', data: arr.map(d=>d.usage), backgroundColor: AMBER, borderRadius:5 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}, ticks:{autoSkip:false, font:{size:10}}}} }
+  });
+}
+document.getElementById('stateYearFilter').addEventListener('change', e=>renderStateChart(e.target.value));
+renderStateChart('2019');
+
+// ---------- REGIONS ----------
+makeChart('chartRegionShare', {
+  type:'pie',
+  data:{ labels: DATA.region_total.map(d=>d.region),
+    datasets:[{ data: DATA.region_total.map(d=>d.usage), backgroundColor: PALETTE, borderColor:'#101B33', borderWidth:3 }]},
+  options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:14}}} }
+});
+
+(function(){
+  const regions = DATA.regions;
+  const years = [2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: regions.map(r => (DATA.region_by_year.find(d=>d.Region===r && d.Year===yr)||{}).Usage_MU || 0),
+    backgroundColor: i===0?AMBER:CYAN, borderRadius:5
+  }));
+  makeChart('chartRegionYear', {
+    type:'bar',
+    data:{ labels: regions, datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+const regionDrillSel = document.getElementById('regionDrillFilter');
+regionDrillSel.innerHTML = DATA.regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+function renderRegionDrill(region){
+  const arr = DATA.state_geo.filter(d=>d.Region===region).sort((a,b)=>b.usage-a.usage);
+  makeChart('chartRegionDrill', {
+    type:'bar',
+    data:{ labels: arr.map(d=>d.State), datasets:[{ label:'Usage (MU)', data: arr.map(d=>d.usage), backgroundColor: VIOLET, borderRadius:6 }]},
+    options:{ plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+}
+regionDrillSel.addEventListener('change', e=>renderRegionDrill(e.target.value));
+renderRegionDrill(DATA.regions[0]);
+
+// ---------- TIME TRENDS ----------
+(function(){
+  const months = [...new Set(DATA.month_wise.map(d=>d.MonthName))];
+  const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sortedMonths = monthOrder.filter(m=>months.includes(m));
+  const years = [2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: sortedMonths.map(m => {
+      const rec = DATA.month_wise.find(d=>d.MonthName===m && d.Year===yr);
+      return rec ? rec.Usage_MU : null;
+    }),
+    borderColor: i===0?AMBER:CYAN, backgroundColor: i===0?AMBER:CYAN,
+    tension:0.35, spanGaps:true, pointRadius:3
+  }));
+  makeChart('chartMonthWise', {
+    type:'line',
+    data:{ labels: sortedMonths.map(m=>m.slice(0,3)), datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+(function(){
+  const quarters = ['Q1','Q2','Q3','Q4'];
+  const years=[2019,2020];
+  const datasets = years.map((yr,i)=>({
+    label:String(yr),
+    data: quarters.map(q=>{
+      const rec = DATA.quarter.find(d=>d.Quarter===q && d.Year===yr);
+      return rec ? rec.Usage_MU : 0;
+    }),
+    backgroundColor: i===0?AMBER:CYAN, borderRadius:5
+  }));
+  makeChart('chartQuarter', {
+    type:'bar',
+    data:{ labels: quarters, datasets },
+    options:{ plugins:{legend:{position:'bottom'}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+  });
+})();
+
+// ---------- LOCKDOWN ----------
+makeChart('chartLockdownTotal', {
+  type:'doughnut',
+  data:{ labels: DATA.lockdown.map(d=>d.period),
+    datasets:[{ data: DATA.lockdown.map(d=>d.total), backgroundColor:[CYAN, BAD], borderColor:'#101B33', borderWidth:3 }]},
+  options:{ plugins:{legend:{position:'bottom'}}, cutout:'60%' }
+});
+makeChart('chartLockdownAvg', {
+  type:'bar',
+  data:{ labels: DATA.lockdown.map(d=>d.period),
+    datasets:[{ label:'Avg Daily Usage (MU)', data: DATA.lockdown.map(d=>d.avg), backgroundColor:[CYAN, BAD], borderRadius:6, maxBarThickness:90 }]},
+  options:{ plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#182541'}}, x:{grid:{display:false}}} }
+});
+
+// ---------- METRO ----------
+(function(){
+  const totals = {};
+  DATA.citytype.forEach(d=>{ totals[d.CityType] = (totals[d.CityType]||0) + d.Usage_MU; });
+  makeChart('chartMetroSplit', {
+    type:'pie',
+    data:{ labels: Object.keys(totals), datasets:[{ data: Object.values(totals), backgroundColor:[AMBER, VIOLET], borderColor:'#101B33', borderWidth:3 }]},
+    options:{ plugins:{legend:{position:'bottom'}} }
+  });
+})();
+(function(){
+  const metroStates = DATA.citytype.filter(d=>d.CityType==='Metro').sort((a,b)=>b.Usage_MU-a.Usage_MU);
+  makeChart('chartMetroStates', {
+    type:'bar',
+    data:{ labels: metroStates.map(d=>d.State), datasets:[{ label:'Usage (MU)', data: metroStates.map(d=>d.Usage_MU), backgroundColor: GOOD, borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#182541'}}, y:{grid:{display:false}}} }
+  });
+})();
+</script>
+</body>
+</html>
